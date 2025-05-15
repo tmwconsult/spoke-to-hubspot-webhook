@@ -98,7 +98,3 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=port)
 '''
 
-# Save to file
-output_file = Path("spoke_to_hubspot_webhook.py")
-output_file.write_text(webhook_code.strip())
-output_file.name
