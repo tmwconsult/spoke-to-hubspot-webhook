@@ -1,16 +1,22 @@
+from pathlib import Path
 
+# Re-create the secure webhook script after kernel reset
+secured_webhook_code = '''
 import os
-from flask import Flask, request, jsonify
 import requests
+import time
+import hashlib
+import hmac
+from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
 
 HUBSPOT_TOKEN = os.getenv("HUBSPOT_PRIVATE_APP_TOKEN")
 HUBSPOT_BASE_URL = "https://api.hubapi.com"
+SPOKE_SIGNING_SECRET = os.getenv("SPOKE_SIGNING_SECRET", "").encode()
 
 def find_contact_by_phone(phone_number):
     url = f"{HUBSPOT_BASE_URL}/crm/v3/objects/contacts/search"
@@ -18,7 +24,7 @@ def find_contact_by_phone(phone_number):
         "Authorization": f"Bearer {HUBSPOT_TOKEN}",
         "Content-Type": "application/json"
     }
-    payload = {
+    data = {
         "filterGroups": [{
             "filters": [{
                 "propertyName": "phone",
@@ -26,15 +32,13 @@ def find_contact_by_phone(phone_number):
                 "value": phone_number
             }]
         }],
-        "properties": ["firstname", "lastname", "email"]
+        "properties": ["firstname", "lastname", "phone"],
+        "limit": 1
     }
-
-    res = requests.post(url, headers=headers, json=payload)
+    res = requests.post(url, headers=headers, json=data)
     res.raise_for_status()
     results = res.json().get("results", [])
     return results[0] if results else None
-
-import time
 
 def create_note_for_contact(contact_id, message_body):
     url = f"{HUBSPOT_BASE_URL}/crm/v3/objects/notes"
@@ -45,21 +49,13 @@ def create_note_for_contact(contact_id, message_body):
     payload = {
         "properties": {
             "hs_note_body": f"Inbound SMS: {message_body}",
-            "hs_timestamp": int(time.time() * 1000)  # required in some setups
+            "hs_timestamp": int(time.time() * 1000)
         }
     }
-
     res = requests.post(url, headers=headers, json=payload)
-
-    try:
-        res.raise_for_status()
-    except requests.exceptions.HTTPError as err:
-        print("HubSpot responded with error:", res.text)
-        raise
-
+    res.raise_for_status()
     note = res.json()
 
-    # Associate the note to the contact (v3-style)
     note_id = note["id"]
     assoc_url = f"{HUBSPOT_BASE_URL}/crm/v3/objects/notes/{note_id}/associations/contacts/{contact_id}/note_to_contact"
     assoc_res = requests.put(assoc_url, headers=headers)
@@ -69,6 +65,12 @@ def create_note_for_contact(contact_id, message_body):
 
 @app.route("/inbound-sms", methods=["POST"])
 def handle_inbound_sms():
+    signature = request.headers.get("Spoke-Signature")
+    raw_body = request.get_data()
+    expected_signature = hmac.new(SPOKE_SIGNING_SECRET, raw_body, hashlib.sha256).hexdigest()
+    if signature != expected_signature:
+        return jsonify({"error": "Unauthorized"}), 403
+
     data = request.get_json()
     from_number = data.get("from")
     message = data.get("message")
@@ -86,3 +88,9 @@ def handle_inbound_sms():
 
 if __name__ == "__main__":
     app.run(debug=True)
+'''
+
+# Save the file
+file_path = "C:/Users/isamu/Spoke Webhook/spoke_to_hubspot_webhook.py"
+Path(file_path).write_text(secured_webhook_code.strip())
+file_path
