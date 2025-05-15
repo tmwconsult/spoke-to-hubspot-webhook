@@ -1,55 +1,60 @@
 from pathlib import Path
 
-# Re-create the secure webhook script after kernel reset
-secured_webhook_code = '''
+# Full content of the corrected spoke_to_hubspot_webhook.py
+webhook_code = '''
 import os
-import requests
 import time
-import hashlib
+import requests
 import hmac
+import hashlib
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 
 load_dotenv()
-
 app = Flask(__name__)
 
 HUBSPOT_TOKEN = os.getenv("HUBSPOT_PRIVATE_APP_TOKEN")
 HUBSPOT_BASE_URL = "https://api.hubapi.com"
 SPOKE_SIGNING_SECRET = os.getenv("SPOKE_SIGNING_SECRET", "").encode()
 
+
 def find_contact_by_phone(phone_number):
     url = f"{HUBSPOT_BASE_URL}/crm/v3/objects/contacts/search"
     headers = {
         "Authorization": f"Bearer {HUBSPOT_TOKEN}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
     data = {
-        "filterGroups": [{
-            "filters": [{
-                "propertyName": "phone",
-                "operator": "EQ",
-                "value": phone_number
-            }]
-        }],
-        "properties": ["firstname", "lastname", "phone"],
-        "limit": 1
+        "filterGroups": [
+            {
+                "filters": [
+                    {
+                        "propertyName": "phone",
+                        "operator": "EQ",
+                        "value": phone_number,
+                    }
+                ]
+            }
+        ],
+        "properties": ["firstname", "lastname", "email"],
+        "limit": 1,
     }
     res = requests.post(url, headers=headers, json=data)
     res.raise_for_status()
     results = res.json().get("results", [])
     return results[0] if results else None
 
+
 def create_note_for_contact(contact_id, message_body):
     url = f"{HUBSPOT_BASE_URL}/crm/v3/objects/notes"
     headers = {
         "Authorization": f"Bearer {HUBSPOT_TOKEN}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
     payload = {
         "properties": {
             "hs_note_body": f"Inbound SMS: {message_body}",
-            "hs_timestamp": int(time.time() * 1000)
+            "hs_timestamp": int(time.time()) * 1000
         }
     }
     res = requests.post(url, headers=headers, json=payload)
@@ -62,6 +67,7 @@ def create_note_for_contact(contact_id, message_body):
     assoc_res.raise_for_status()
 
     return note
+
 
 @app.route("/inbound-sms", methods=["POST"])
 def handle_inbound_sms():
@@ -86,12 +92,12 @@ def handle_inbound_sms():
     note = create_note_for_contact(contact_id, message)
     return jsonify({"status": "note created", "noteId": note.get("id")})
 
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
-
 '''
 
-# Save the file
-file_path = "spoke_to_hubspot_webhook.py"
-Path(file_path).write_text(secured_webhook_code.strip())
-file_path
+# Save to file
+output_file = Path("spoke_to_hubspot_webhook.py")
+output_file.write_text(webhook_code.strip())
+output_file.name
