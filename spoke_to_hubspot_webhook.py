@@ -1,7 +1,3 @@
-from pathlib import Path
-
-# Full content of the corrected spoke_to_hubspot_webhook.py
-webhook_code = '''
 import os
 import time
 import requests
@@ -94,7 +90,6 @@ def handle_inbound_sms():
 
 
 if __name__ == "__main__":
-    port=int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 5000))
+    print(f"✅ Running Flask app on port {port}")
     app.run(host="0.0.0.0", port=port)
-'''
-
