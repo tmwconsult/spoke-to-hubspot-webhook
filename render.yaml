@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: spoke-to-hubspot-webhook
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python spoke_to_hubspot_webhook.py
+    plan: free
