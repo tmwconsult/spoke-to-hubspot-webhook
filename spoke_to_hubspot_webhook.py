@@ -91,6 +91,6 @@ if __name__ == "__main__":
 '''
 
 # Save the file
-file_path = "C:/Users/isamu/Spoke Webhook/spoke_to_hubspot_webhook.py"
+file_path = "spoke_to_hubspot_webhook.py"
 Path(file_path).write_text(secured_webhook_code.strip())
 file_path
